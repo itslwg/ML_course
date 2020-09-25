@@ -1,0 +1,560 @@
+* Activate the environment and import packages 
+
+  #+BEGIN_SRC elisp :session
+(pyvenv-activate "~/courses/Machine Learning")
+  #+END_SRC
+
+  #+RESULTS:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+# Useful starting lines
+%matplotlib inline
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+%load_ext autoreload
+%autoreload 2
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[1]:
+  :END:
+
+* Load the data
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+import datetime
+from template.helpers import *
+
+height, weight, gender = load_data(sub_sample=False, add_outlier=False)
+x, mean_x, std_x = standardize(height)
+y, tx = build_model_data(x, weight)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[2]:
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+y.shape, tx.shape
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[32]:
+  : ((10000,), (10000, 2))
+  :END:
+  
+* 1. Compute the loss function
+
+  1. *What does each column of $\tilde X$ represent*
+
+     The first column is the intercept column. The second column is the height for each sample $x_n$
+
+  2. *What does each row of $\tilde X$ represent?*
+  
+     Each row represents a sample, i.e. in this case the height of each person.
+
+  3. *Why do we have 1's in $\tilde X$*?
+
+     When taking the dot product with the weight, it makes the intercept be only the weight $\textbf{w}^*_0$
+
+  4 *If we have heights and weights of 3 people, what would be the size of $y$ and $\tilde X$? What 
+     would $\tilde X_{32}$ represent?*
+
+     $\tilde X$ will be a 3x2 matrix and y will be a 3x1 matrix. $\tilde X_{32}$ represents the standardized 
+     weight of the third person.
+
+  1. *In helpers.py, we have already provided code to form arrays for y and X̃. Have a look at the code, and
+     make sure you understand how they are constructed.*
+  
+     Done
+
+  2. *Check if the sizes of the variables make sense (use functions shape)*
+
+     Done. Since y is a 1D array, it will not have any dimension for the columns
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+w = np.array([60, 16])
+e = np.array([y]).transpose() - np.dot(tx, w)
+mse = (1 / (2*tx.shape[0])) * np.sum(np.square(e))
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[82]:
+  : 106.92599367303207
+  :END:
+  
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def compute_loss(y, tx, w):
+    """Calculate the loss.
+
+    You can calculate the loss using mse or mae.
+    """
+    e = y[np.newaxis].transpose() - tx.dot(w[np.newaxis].T)
+    mse = (1 / (2*tx.shape[0])) * np.sum(np.square(e))
+    
+    return mse
+
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[3]:
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+compute_loss(y, tx, np.array([13, 70]))
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[5]:
+  : 3430.335856282571
+  :END:
+  
+* 2. Grid Search
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def grid_search(y, tx, w0, w1):
+    """Algorithm for grid search."""
+    losses = np.zeros((len(w0), len(w1)))
+    for i, w0_star in enumerate(w0):
+        for j, w1_star in enumerate(w1):
+            losses[i, j] = compute_loss(y, tx, np.array([w0_star, w1_star]))
+
+    return losses
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[8]:
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+loss = grid_search(y, tx, [1,2], [2,3])
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[125]:
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+from template.grid_search import generate_w, get_best_parameters
+from template.plots import grid_visualization
+
+# Generate the grid of parameters to be swept
+grid_w0, grid_w1 = generate_w(num_intervals=100)
+
+# Start the grid search
+start_time = datetime.datetime.now()
+grid_losses = grid_search(y, tx, grid_w0, grid_w1)
+
+# Select the best combinaison
+loss_star, w0_star, w1_star = get_best_parameters(grid_w0, grid_w1, grid_losses)
+end_time = datetime.datetime.now()
+execution_time = (end_time - start_time).total_seconds()
+
+# Print the results
+print("Grid Search: loss*={l}, w0*={w0}, w1*={w1}, execution time={t:.3f} seconds".format(
+      l=loss_star, w0=w0_star, w1=w1_star, t=execution_time))
+
+# Plot the results
+fig = grid_visualization(grid_losses, grid_w0, grid_w1, mean_x, std_x, height, weight)
+fig.set_size_inches(10.0,6.0)
+fig.savefig("grid_plot")  # Optional saving
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[18]:
+  [[file:./obipy-resources/omvo8L.png]]
+  :END:
+
+  * The new fit result in: $w^*_0 \approx 71$ and $w^*_0 \approx 15$ and the old fit resulted in 
+  $w^*_0 \approx 67$ and $w^*_0 \approx 17$. 
+
+  A fit of 50 intervals results in:
+
+  Grid Search: loss*=18.79354101952324, w0*=71.42857142857142, w1*=15.306122448979579, execution time=0.237 seconds
+
+  A fit of 100 intervals results in:
+
+  Grid Search: loss*=15.55870336860953, w0*=72.72727272727272, w1*=13.636363636363626, execution time=0.960 seconds
+
+  A fit of 200 intervals results in:
+
+  Grid Search: loss*=15.610085652488802, w0*=73.36683417085428, w1*=12.8140703517588, execution time=3.660 seconds
+
+  A fit of 400 intervals results in:
+
+  Grid Search: loss*=15.503045273182208, w0*=72.93233082706766, w1*=13.15789473684211, execution time=14.715 seconds
+
+  A fit of 800 intervals results in:
+
+  Grid Search: loss*=15.412169868398616, w0*=73.4668335419274, w1*=13.32916145181477, execution time=69.874 seconds
+
+  A fit of 1000 intervals results in:
+
+  Grid Search: loss*=15.392869607064666, w0*=73.27327327327328, w1*=13.363363363363362, execution time=104.074 seconds
+
+  * *As we see with 100, 200 and 400 intervals, the finer grid does not guarantee that we obtain a more accurate fit.*
+
+  * Doubling the intervals increases the execution time by a factor of 4.
+
+* 3. Gradient Descent
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def compute_gradient(y, tx, w):
+    """Compute the gradient."""
+    e = y[np.newaxis].T - np.dot(tx, w[np.newaxis].T)
+    return - ((1 / tx.shape[0]) * np.dot(tx.T, e)).T
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[10]:
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+weights = np.array([[100, 20], [50, 10]])
+gradients = [compute_gradient(y, tx, w) for w in weights]
+norms = np.linalg.norm(gradients, axis=1)
+gradients
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[11]:
+  : [array([[26.706078  ,  6.52028757]]), array([[-23.293922  ,  -3.47971243]])]
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+gradients
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[93]:
+  : [array([[26.706078  ,  6.52028757]]), array([[-23.293922  ,  -3.47971243]])]
+  :END:
+
+  For $w_0 = 100 \ ; \ w_1 = 20$ the norm is bigger, meaning that the descent is steeper and that 
+  the next step should be in that direction
+  
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def gradient_descent(y, tx, initial_w, max_iters, gamma):
+    """Gradient descent algorithm."""
+    # Define parameters to store w and loss
+    ws = [initial_w]
+    losses = []
+    w = initial_w
+    for n_iter in range(max_iters):
+        # Compute gradient and loss
+        g = compute_gradient(y, tx, w)
+        loss = compute_loss(y, tx, w)
+        # Update the weights
+        w = w - gamma * g
+        w = w.ravel()
+        # store w and loss
+        ws.append(w)
+        losses.append(loss)
+        print("Gradient Descent({bi}/{ti}): loss={l}, w0={w0}, w1={w1}".format(
+              bi=n_iter, ti=max_iters - 1, l=loss, w0=w[0], w1=w[1]))
+
+    return losses, ws
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[15]:
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+# from gradient_descent import *
+from template.plots import gradient_descent_visualization
+
+# Define the parameters of the algorithm.
+max_iters = 750
+gamma = 0.1
+
+# Initialization
+w_initial = np.array([-1000, 1000])
+
+# Start gradient descent.
+start_time = datetime.datetime.now()
+gradient_losses, gradient_ws = gradient_descent(y, tx, w_initial, max_iters, gamma)
+end_time = datetime.datetime.now()
+
+# Print result
+exection_time = (end_time - start_time).total_seconds()
+print("Gradient Descent: execution time={t:.3f} seconds".format(t=exection_time))
+
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[71]:
+  :END:
+
+  1. *Is the cost being minimized?*
+
+     Yes, the cost is being minimized.
+
+  2. *Is the algorithm converging? What can be said about the convergence speed?*
+
+     Yes, the algorithm is converging. The algorithm took approximately 20 iterations to converge to 
+     its final loss, at least in terms of the final decimal number accuracy.
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+# Time Visualization
+from ipywidgets import IntSlider, interact
+
+def plot_figure(n_iter):
+    fig = gradient_descent_visualization(
+        gradient_losses, gradient_ws, grid_losses, grid_w0, grid_w1, mean_x, std_x, height, weight, n_iter)
+    fig.set_size_inches(10.0, 6.0)
+
+interact(plot_figure, n_iter=100)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[69]:
+  : <function __main__.plot_figure(n_iter)>
+  [[file:./obipy-resources/uJxlJ2.png]]
+  :END:
+  
+
+  Using w_initial = np.array([-50, 100])
+
+  1. Using gamma = 0.001, the algorithm converges very slowly. With iterations of *10000*, the algorithm converges 
+     to the loss of gamma = 0.7.
+
+     Using gamma = 0.01, the algorithm converses, but slowly. With iterations of *750*, the algorithm converses to the
+     loss of gamma = 0.7
+
+     Using gamma = 0.5, the algorithm converges in approximately *30 iterations.*
+
+     Using gamma = 1, the algorithm converges in *2 iterations*
+
+     Using gamma = 2.5, the algorithm does not converge.
+
+  2. With w_0 = 0 and w_1 = 0, the algorithm converges in approximately *200 iterations*
+
+     With w_0 = 100 and w_1 = 10, the algorithm converges in approximately *180 iterations*
+
+     With w_0 = -1000 and w_1 = 1000, the algorithm converges in approximately *225 iterations*
+
+* 4. Stochastic Gradient Descent
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def compute_stoch_gradient(y, tx, w):
+    """Compute a stochastic gradient from just few examples n and their corresponding y_n labels."""
+    e = y[np.newaxis].T - np.dot(tx, w[np.newaxis].T)
+    return - ((1 / tx.shape[0]) * np.dot(tx.T, e)).T
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[81]:
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+from template.helpers import batch_iter
+
+test = batch_iter(y, tx, 2)
+# for minibatch_y, minibatch_tx in test:
+#     print(minibatch_y, minibatch_tx)
+
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[82]:
+  :END:
+  
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def stochastic_gradient_descent(y, tx, initial_w, 
+                                batch_size, max_iters, gamma):
+    """Stochastic gradient descent algorithm."""
+    # Define parameters to store w and loss
+    ws = [initial_w]
+    losses = []
+    w = initial_w
+    for n_iter in range(max_iters):
+        for minibatch_y, minibatch_tx in batch_iter(y, tx, batch_size):
+            # Compute gradient and loss
+            g = compute_stoch_gradient(minibatch_y, minibatch_tx, w)
+            loss = compute_loss(minibatch_y, minibatch_tx, w)
+            # Update the weights
+            w = w - gamma * g
+            w = w.ravel()
+            # store w and loss
+            ws.append(w)
+            losses.append(loss)
+            print("Stochastic gradient descent({bi}/{ti}): loss={l}, w0={w0}, w1={w1}".format(
+                bi=n_iter, ti=max_iters - 1, l=loss, w0=w[0], w1=w[1]))
+
+    return losses, ws
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[85]:
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+# from stochastic_gradient_descent import *
+
+# Define the parameters of the algorithm.
+max_iters = 50
+gamma = 0.7
+batch_size = 10
+
+# Initialization
+w_initial = np.array([0, 0])
+
+# Start SGD.
+start_time = datetime.datetime.now()
+sgd_losses, sgd_ws = stochastic_gradient_descent(
+    y, tx, w_initial, batch_size, max_iters, gamma)
+end_time = datetime.datetime.now()
+
+# Print result
+exection_time = (end_time - start_time).total_seconds()
+print("SGD: execution time={t:.3f} seconds".format(t=exection_time))
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[99]:
+  :END:
+  
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+# Time Visualization
+def plot_figure(n_iter):
+    fig = gradient_descent_visualization(
+        sgd_losses, sgd_ws, grid_losses, grid_w0, grid_w1, mean_x, std_x, height, weight, n_iter)
+    fig.set_size_inches(10.0, 6.0)
+
+interact(plot_figure, n_iter=60)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[100]:
+  : <function __main__.plot_figure(n_iter)>
+  [[file:./obipy-resources/zeeVTZ.png]]
+  :END:
+  
+* 5. Effects of outliers and MAE cost function
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+from template.plots import prediction
+
+# Load the data
+height, weight, gender = load_data(sub_sample=True, add_outlier=True)
+x, mean_x, std_x = standardize(height)
+y, tx = build_model_data(x, weight)
+
+# Compute the optimal w
+_, gradient_ws = gradient_descent(y, tx, np.array([0,0]), 50, 0.5)
+w = gradient_ws[-1]
+y_star = np.dot(tx, w[np.newaxis].T)
+
+# Plot
+f, ax = plt.subplots()
+ax.scatter(height, weight)
+ax.plot(height, y_star, 'r-')
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[149]:
+  : [<matplotlib.lines.Line2D at 0x7f708d16b2e8>]
+  [[file:./obipy-resources/xWkMqB.png]]
+  :END:
+
+#+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+height
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[140]:
+#+BEGIN_EXAMPLE
+  array([1.84617543, 1.61956457, 1.75130444, 1.68698379, 1.77980506,
+  1.69311873, 1.7464897 , 1.65415908, 1.74927259, 1.7417531 ,
+  1.80156887, 1.5932762 , 1.75779236, 1.82752191, 1.74400237,
+  1.76296288, 1.80537587, 1.77580963, 1.85541077, 1.66391312,
+  1.66060468, 1.76122186, 1.76178493, 1.79907538, 1.61716728,
+  1.76770188, 1.70357696, 1.8393321 , 1.73421441, 1.70006511,
+  1.69754522, 1.6849005 , 1.6742234 , 1.69250895, 1.79144149,
+  1.8651167 , 1.76672158, 1.80968923, 1.70567423, 1.55683504,
+  1.73045512, 1.66207766, 1.66572365, 1.780957  , 1.8054684 ,
+  1.76224051, 1.59385372, 1.62349974, 1.74740543, 1.83502583,
+  1.52686218, 1.78328282, 1.68912354, 1.79777279, 1.82748209,
+  1.8166126 , 1.83477468, 1.76423638, 1.6037424 , 1.71725933,
+  1.69456645, 1.72979561, 1.73693525, 1.69210814, 1.74713253,
+  1.70094191, 1.65556296, 1.70739446, 1.77866764, 1.88602645,
+  1.81847425, 1.8533416 , 1.58815484, 1.80538842, 1.63846921,
+  1.76442035, 1.85772217, 1.76137479, 1.76618785, 1.85959288,
+  1.71655361, 1.68331415, 1.67841898, 1.70105515, 1.78134037,
+  1.60149058, 1.88559216, 1.59615121, 1.91500457, 1.76954106,
+  1.73251326, 1.76149863, 1.71667895, 1.84078341, 1.69213725,
+  1.78583261, 1.71514618, 1.70434909, 1.84504416, 1.71843052,
+  1.4727683 , 1.62623801, 1.60096344, 1.60228031, 1.54398866,
+  1.75981845, 1.43494351, 1.52944958, 1.50302919, 1.56877492,
+  1.63954908, 1.52019431, 1.68704243, 1.65534202, 1.59723609,
+  1.4891905 , 1.65645645, 1.70278547, 1.52373904, 1.56261242,
+  1.62937077, 1.48743515, 1.55938546, 1.54562924, 1.60142439,
+  1.49750686, 1.5707062 , 1.57576588, 1.52085596, 1.55623036,
+  1.73396216, 1.58890884, 1.61905915, 1.54664036, 1.51790206,
+  1.5981182 , 1.58660273, 1.60196399, 1.58791249, 1.60036465,
+  1.56762292, 1.58651865, 1.6681908 , 1.56695664, 1.5099753 ,
+  1.57830952, 1.47876279, 1.55589367, 1.76855215, 1.53167398,
+  1.61310369, 1.62556055, 1.75050632, 1.59394321, 1.67783503,
+  1.53776324, 1.61450518, 1.56499321, 1.65378389, 1.72233075,
+  1.54284074, 1.55788721, 1.61223356, 1.63458061, 1.66655956,
+  1.62898976, 1.75996294, 1.64290441, 1.61266927, 1.5913491 ,
+  1.55057474, 1.51209864, 1.59883934, 1.45858711, 1.58804219,
+  1.56797718, 1.58023959, 1.70346108, 1.5368976 , 1.6572567 ,
+  1.46313566, 1.52548819, 1.57518805, 1.64126269, 1.59562733,
+  1.56946263, 1.57208816, 1.51996358, 1.6814883 , 1.56448728,
+  1.63965072, 1.58933129, 1.62910504, 1.55651814, 1.5725121 ,
+  1.66887908, 1.57212658, 1.54701395, 1.64613291, 1.52776812])
+#+END_EXAMPLE
+:END:
+
+* 6. Subgradient Descent
+  
+  Now using the MAD loss.
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def compute_loss(y, tx, w):
+    """Calculate the loss.
+
+    You can calculate the loss using mse or mae.
+    """
+    e = y[np.newaxis].transpose() - tx.dot(w[np.newaxis].T)
+    mad = (1 / (tx.shape[0])) * np.absolute(np.square(e))
+    
+    return mad
+  #+END_SRC
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def compute_gradient(y, tx, w):
+    """Compute a stochastic gradient from just few examples n and their corresponding y_n labels."""
+    e = y[np.newaxis].T - np.dot(tx, w[np.newaxis].T)
+    return - ((1 / tx.shape[0]) * np.dot(tx.T, e)).T
+  #+END_SRC
+  
+  
+  

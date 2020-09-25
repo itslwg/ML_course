@@ -3,11 +3,8 @@
 
 def compute_gradient(y, tx, w):
     """Compute the gradient."""
-    # ***************************************************
-    # INSERT YOUR CODE HERE
-    # TODO: compute gradient and loss
-    # ***************************************************
-    raise NotImplementedError
+    e = y[np.newaxis].T - np.dot(tx, w[np.newaxis].T)
+    return - ((1 / tx.shape[0]) * np.dot(tx.T, e)).T
 
 
 def gradient_descent(y, tx, initial_w, max_iters, gamma):
@@ -17,16 +14,12 @@ def gradient_descent(y, tx, initial_w, max_iters, gamma):
     losses = []
     w = initial_w
     for n_iter in range(max_iters):
-        # ***************************************************
-        # INSERT YOUR CODE HERE
-        # TODO: compute gradient and loss
-        # ***************************************************
-        raise NotImplementedError
-        # ***************************************************
-        # INSERT YOUR CODE HERE
-        # TODO: update w by gradient
-        # ***************************************************
-        raise NotImplementedError
+        # Compute gradient and loss
+        g = compute_gradient(y, tx, w)
+        loss = compute_loss(y, tx, w)
+        # Update the weights
+        w = w - gamma * g
+        w = w.ravel()
         # store w and loss
         ws.append(w)
         losses.append(loss)

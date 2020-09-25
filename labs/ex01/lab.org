@@ -1,0 +1,400 @@
+* Activate the environment and import packages 
+  
+#+BEGIN_SRC elisp :session
+(pyvenv-activate "~/courses/Machine Learning")
+#+END_SRC
+
+#+RESULTS:
+
+  Import the necessary packages
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+%matplotlib inline
+import numpy as np
+import matplotlib.pyplot as plt
+%load_ext autoreload
+%autoreload 2
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[90]:
+  :END:
+
+* Task A
+ 
+  Generate data
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+num_samples, num_features = 10, 5
+np.random.seed(10)
+data = np.random.rand(num_samples, num_features)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[4]:
+  :END:
+ 
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+(data - np.mean(data, axis=0)) / np.std(data, axis=0)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[86]:
+  #+BEGIN_EXAMPLE
+    array([[ 1.0775774 , -1.34411605,  0.31525355,  0.80665878,  0.24128662],
+    [-1.81711634, -0.77630186,  0.74088404, -1.25592235, -1.42276759],
+    [ 0.62228127,  1.64254169, -1.797091  , -0.03521894,  1.51565143],
+    [ 0.23651339,  0.90075228, -0.83122987,  1.40786459,  1.11788073],
+    [-0.13414844, -0.95529104, -0.55795449,  0.54097769,  0.01136005],
+    [-0.70898541,  0.56774371, -0.08900028,  0.45652209,  0.65726018],
+    [ 1.2571441 ,  0.25993298,  1.23775021, -0.72176808, -1.4141686 ],
+    [-1.41508984, -1.04555188,  0.96949701, -1.69076861,  0.75969247],
+    [-0.10744434,  1.21308427, -1.14296098,  1.19109415, -0.35450368],
+    [ 0.98926822, -0.46279408,  1.15485183, -0.69943932, -1.11169162]])
+  #+END_EXAMPLE
+  :END:
+ 
+  Define the standardization function
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def standardize(X):
+
+    return (X - np.mean(X, axis=0)) / np.std(X, axis=0)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[87]:
+  :END:
+  
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+std_data = standardize(data)
+print(std_data, "\n\n", np.mean(std_data, axis=0), "\n\n", np.std(std_data, axis=0))
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[89]:
+  :END:
+ 
+
+* Task B
+
+  Data Generation
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+np.random.seed(10)
+p, q = (np.random.rand(i, 2) for i in (4, 5))
+p_big, q_big = (np.random.rand(i, 80) for i in (100, 120))
+
+print(p, "\n\n", q)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[94]:
+  :END:
+  
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def naive(p, q):
+    dist = []
+    for rowp in p:
+        for rowq in q:
+            dist.append(np.sqrt(np.sum(np.square(rowp - rowq))))
+            
+    return (dist)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[209]:
+  :END:
+  
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+naive(p, q)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[210]:
+  #+BEGIN_EXAMPLE
+    [0.6059907348804273,
+    0.9365944898987211,
+    0.9112485649585925,
+    0.5932135554807512,
+    0.27561750547868197,
+    0.80746998710743,
+    0.2110235448977485,
+    0.6726864862407325,
+    0.22495083899856577,
+    0.46534491028777053,
+    0.35654215377164244,
+    0.752174928692148,
+    0.572000519564677,
+    0.4990006786733419,
+    0.23310824671116084,
+    0.6728141075544654,
+    0.5240747242404203,
+    0.31520225646914607,
+    0.6321289658820349,
+    0.7027737618573386]
+  #+END_EXAMPLE
+  :END:
+
+** Use matching indices
+
+   Instead of iterating through indices, one can use them directly to parallelize the operations with Numpy.
+
+   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+rows, cols = np.indices((p.shape[0], q.shape[0]))
+print(rows, end='\n\n')
+print(cols)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[131]:
+   :END:
+   
+   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+np.sqrt(np.sum(np.square(p[rows.ravel()] - q[cols.ravel()]), axis=1))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[179]:
+   #+BEGIN_EXAMPLE
+     array([0.60599073, 0.93659449, 0.91124856, 0.59321356, 0.27561751,
+     0.80746999, 0.21102354, 0.67268649, 0.22495084, 0.46534491,
+     0.35654215, 0.75217493, 0.57200052, 0.49900068, 0.23310825,
+     0.67281411, 0.52407472, 0.31520226, 0.63212897, 0.70277376])
+   #+END_EXAMPLE
+   :END:
+  
+   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def with_indices(p, q):
+    rows, cols = np.indices((p.shape[0], q.shape[0]))
+    return np.sqrt(np.sum(np.square(p[rows.ravel()] - q[cols.ravel()]), axis=1))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[180]:
+   :END:
+  
+   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+with_indices(p,q)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[181]:
+   #+BEGIN_EXAMPLE
+     array([0.60599073, 0.93659449, 0.91124856, 0.59321356, 0.27561751,
+     0.80746999, 0.21102354, 0.67268649, 0.22495084, 0.46534491,
+     0.35654215, 0.75217493, 0.57200052, 0.49900068, 0.23310825,
+     0.67281411, 0.52407472, 0.31520226, 0.63212897, 0.70277376])
+   #+END_EXAMPLE
+   :END:
+   
+
+** Use a library
+
+   scipy is the equivalent of matlab toolboxes and have a lot to offer. Actually the pairwise computation
+   is part of the library through the spatial module.
+
+   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+from scipy.spatial.distance import cdist
+
+def scipy_version(p, q):
+    return cdist(p, q)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[183]:
+   :END:
+  
+   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+scipy_version(p, q)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[184]:
+   #+BEGIN_EXAMPLE
+     array([[0.60599073, 0.93659449, 0.91124856, 0.59321356, 0.27561751],
+     [0.80746999, 0.21102354, 0.67268649, 0.22495084, 0.46534491],
+     [0.35654215, 0.75217493, 0.57200052, 0.49900068, 0.23310825],
+     [0.67281411, 0.52407472, 0.31520226, 0.63212897, 0.70277376]])
+   #+END_EXAMPLE
+   :END:
+
+#+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+print(naive(p, q), end="\n\n")
+print(with_indices(p,q), end="\n\n")
+print(scipy_version(p,q), end="\n\n")
+print(tensor_broadcasting(p,q), end="\n\n")
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+# Out[219]:
+:END:
+
+** Numpy Magic
+
+   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def tensor_broadcasting(p, q):
+    return np.sqrt(np.sum((p[:,np.newaxis,:]-q[np.newaxis,:,:])**2, axis=2))
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[185]:
+   :END:
+   
+   Comparing the methods...
+
+   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+methods = [naive, with_indices, scipy_version, tensor_broadcasting]
+timers = []
+for f in methods:
+    r = %timeit -o f(p_big, q_big)
+    timers.append(r)
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[212]:
+   :END:
+
+   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async 
+plt.figure(figsize=(10,6))
+plt.bar(np.arange(len(methods)), [r.best*1000 for r in timers], log=False)  # Set log to True for logarithmic scale
+plt.xticks(np.arange(len(methods))+0.2, [f.__name__ for f in methods], rotation=30)
+plt.xlabel('Method')
+plt.ylabel('Time (ms)')
+plt.show()
+   #+END_SRC
+
+   #+RESULTS:
+   :RESULTS:
+   # Out[213]:
+   [[file:./obipy-resources/JntKql.png]]
+   :END:
+
+
+
+  
+* Task C
+
+  Data generation
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+from numpy.random import rand, randn
+
+n, d, k = 100, 2, 2
+
+np.random.seed(20)
+X = rand(n, d)
+
+# means = [rand(d)  for _ in range(k)]  # works for any k
+means = [rand(d) * 0.5 + 0.5 , - rand(d)  * 0.5 + 0.5]  # for better plotting when k = 2
+
+S = np.diag(rand(d))
+
+sigmas = [S]*k # we'll use the same Sigma for all clusters for better visual results
+
+print(means)
+print(sigmas)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[221]:
+  :END:
+  
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+#-0.5*(X - means[0]).dot(np.linalg.inv(sigmas[0])).dot((X - means[0]).transpose())
+#np.linalg.inv(sigmas[0]).dot(X - means[0])p
+X.shape[1]
+mean = means[0]
+sigma = sigmas[0]
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[306]:
+  #+BEGIN_EXAMPLE
+    array([[1.06857599e-04, 3.03707234e-04, 2.39858221e-05, ...,
+    2.16631449e-05, 3.51600985e-04, 1.11951939e-04],
+    [3.03707234e-04, 6.03384777e-05, 6.88033607e-03, ...,
+    6.35591123e-03, 9.28039221e-05, 2.32214748e-04],
+    [2.39858221e-05, 6.88033607e-03, 6.82119722e-10, ...,
+    7.87247144e-10, 2.21146641e-03, 5.49263237e-05],
+    ...,
+    [2.16631449e-05, 6.35591123e-03, 7.87247144e-10, ...,
+    8.35833417e-10, 2.56749629e-03, 4.64230382e-05],
+    [3.51600985e-04, 9.28039221e-05, 2.21146641e-03, ...,
+    2.56749629e-03, 7.29627686e-05, 3.36698834e-04],
+    [1.11951939e-04, 2.32214748e-04, 5.49263237e-05, ...,
+    4.64230382e-05, 3.36698834e-04, 1.06712863e-04]])
+  #+END_EXAMPLE
+  :END:
+  
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+
+
+def compute_log_p(X, mean, sigma):
+    dxm = X - mean
+    exponent = -0.5 * np.sum(dxm * np.dot(dxm, np.linalg.inv(sigma)), axis=1)
+    return exponent - np.log(2 * np.pi) * (d / 2) - 0.5 * np.log(np.linalg.det(sigma))
+
+
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[312]:
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+log_ps = [compute_log_p(X, m, s) for m, s in zip(means, sigmas)]  # exercise: try to do this without looping
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[313]:
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+assignments = np.argmax(log_ps, axis=0)
+print(assignments)
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[314]:
+  :END:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+colors = np.array(['red', 'green'])[assignments]
+plt.scatter(X[:, 0], X[:, 1], c=colors, s=100)
+plt.scatter(np.array(means)[:, 0], np.array(means)[:, 1], marker='*', s=200)
+plt.show()
+  #+END_SRC
+
+  #+RESULTS:
+  :RESULTS:
+  # Out[315]:
+  [[file:./obipy-resources/GbrHpG.png]]
+  :END:
+    
+
+  
+
