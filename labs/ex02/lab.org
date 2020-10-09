@@ -98,7 +98,6 @@ def compute_loss(y, tx, w):
     mse = (1 / (2*tx.shape[0])) * np.sum(np.square(e))
     
     return mse
-
   #+END_SRC
 
   #+RESULTS:
