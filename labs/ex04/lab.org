@@ -458,6 +458,7 @@ bias_variance_demo(degrees, rmse_tr, rmse_te)
 
   #+RESULTS:
   :results:
-  0 - 92083a57-2949-4335-8493-9aa1f90ff477
+  # Out[23]:
+  [[file:./obipy-resources/rHMibv.png]]
   :end:
 
