@@ -20,7 +20,6 @@ import matplotlib.pyplot as plt
   # Out[1]:
   :end:
   
-
 * 1.Cross-validation
 
   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
@@ -54,18 +53,12 @@ def build_k_indices(y, k_fold, seed):
   :end:
 
   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
-build_k_indices(y, 4, 1)
+k_indices = build_k_indices(y, 4, 1)
   #+END_SRC
 
   #+RESULTS:
   :results:
   # Out[4]:
-  #+BEGIN_EXAMPLE
-    array([[27, 35, 40, 38,  2,  3, 48, 29, 46, 31, 32, 39],
-    [21, 36, 19, 42, 49, 26, 22, 13, 41, 17, 45, 24],
-    [23,  4, 33, 14, 30, 10, 28, 44, 34, 18, 20, 25],
-    [ 6,  7, 47,  1, 16,  0, 15,  5, 11,  9,  8, 12]])
-  #+END_EXAMPLE
   :end:
 
   Import helper functions
@@ -78,11 +71,11 @@ from template.build_polynomial import build_poly
 
   #+RESULTS:
   :results:
-  # Out[226]:
+  # Out[5]:
   :end:
-  
-  
+    
   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+k = 3
 mask = np.arange(k_indices.shape[0]) == k
 x_augmented = build_poly(x, 3)
 tri = k_indices[~mask].ravel()
@@ -95,7 +88,7 @@ y_test = y[tei]
 
   #+RESULTS:
   :results:
-  # Out[227]:
+  # Out[6]:
   :end:
 
   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
@@ -106,12 +99,11 @@ def cross_validation(y, x, k_indices, lambda_, degree):
     for k in np.arange(k_indices.shape[0]):
         # Augment and set indices
         mask = np.arange(k_indices.shape[0]) == k
-        x_augmented = build_poly(x, degree)
         tri = k_indices[~mask].ravel()
         tei = k_indices[mask].ravel()
         # Subset for trainin and test sets
-        x_train = x_augmented[tri]
-        x_test = x_augmented[tei]
+        x_train = x[tri]
+        x_test = x[tei]
         y_train = y[tri]
         y_test = y[tei]
         # Run ridge regression
@@ -123,16 +115,80 @@ def cross_validation(y, x, k_indices, lambda_, degree):
 
   #+RESULTS:
   :results:
-  # Out[228]:
+  # Out[7]:
   :end:
+  
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+X_augmented = np.hstack([np.ones((x.shape[0], 1)), x[np.newaxis].T])
+X_augmented
+  #+END_SRC
 
+  #+RESULTS:
+  :results:
+  # Out[8]:
+  #+BEGIN_EXAMPLE
+    array([[1.        , 0.35237491],
+    [1.        , 4.8951233 ],
+    [1.        , 1.86662437],
+    [1.        , 3.50706129],
+    [1.        , 3.38087384],
+    [1.        , 0.73093728],
+    [1.        , 3.88562366],
+    [1.        , 5.65224803],
+    [1.        , 6.28318531],
+    [1.        , 2.37137419],
+    [1.        , 0.60474982],
+    [1.        , 3.63324875],
+    [1.        , 0.85712473],
+    [1.        , 2.49756165],
+    [1.        , 1.61424946],
+    [1.        , 5.39987312],
+    [1.        , 6.15699785],
+    [1.        , 6.0308104 ],
+    [1.        , 0.47856237],
+    [1.        , 2.87612401],
+    [1.        , 4.51656093],
+    [1.        , 0.98331219],
+    [1.        , 1.10949964],
+    [1.        , 0.1       ],
+    [1.        , 2.11899928],
+    [1.        , 1.36187455],
+    [1.        , 4.01181111],
+    [1.        , 5.77843549],
+    [1.        , 4.26418602],
+    [1.        , 1.2356871 ],
+    [1.        , 2.24518674],
+    [1.        , 1.99281183],
+    [1.        , 1.48806201],
+    [1.        , 4.64274839],
+    [1.        , 4.39037348],
+    [1.        , 3.00231147],
+    [1.        , 0.22618746],
+    [1.        , 5.27368567],
+    [1.        , 5.02131076],
+    [1.        , 5.52606058],
+    [1.        , 2.6237491 ],
+    [1.        , 4.76893584],
+    [1.        , 3.12849893],
+    [1.        , 1.74043692],
+    [1.        , 3.7594362 ],
+    [1.        , 3.25468638],
+    [1.        , 5.90462294],
+    [1.        , 4.13799857],
+    [1.        , 2.74993656],
+    [1.        , 5.14749821]])
+  #+END_EXAMPLE
+  :end:
+  
+
+  
   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
 from template.plots import cross_validation_visualization
 
-def cross_validation_demo():
+def cross_validation_demo(x, y):
     seed = 1
-    degree = 4
-    k_fold = 10
+    degree = 7
+    k_fold = 4
     lambdas = np.logspace(-4, 0, 30)
     # split data in k fold
     k_indices = build_k_indices(y, k_fold, seed)
@@ -140,16 +196,17 @@ def cross_validation_demo():
     rmse_tr = [0] * len(lambdas)
     rmse_te = [0] * len(lambdas)
     for i, lambda_ in enumerate(lambdas):
-        rmse_tr[i], rmse_te[i] = cross_validation(y, x, k_indices, lambda_, degree)
+        x_augmented = build_poly(x, degree)
+        rmse_tr[i], rmse_te[i] = cross_validation(y, x_augmented, k_indices, lambda_, degree)
     cross_validation_visualization(lambdas, rmse_tr, rmse_te)
 
-cross_validation_demo()
+cross_validation_demo(x, y)
   #+END_SRC
 
   #+RESULTS:
   :results:
-  # Out[266]:
-  [[file:./obipy-resources/NOd1yT.png]]
+  # Out[13]:
+  [[file:./obipy-resources/ftpmMg.png]]
   :end:
 
   Select best model out of a number of lamdas, which is basically the demo with a argmax.
@@ -169,7 +226,8 @@ def select_best_model():
     for i, lambda_ in enumerate(lambdas):
         for j, degree in enumerate(degrees):
             # Rows denote the lamdas, cols the degree
-            _, rmse_te[i, j] = cross_validation(y, x, k_indices, lambda_, degree)
+            x_augmented = build_poly(x, degree)
+            _, rmse_te[i, j] = cross_validation(y, x_augmented, k_indices, lambda_, degree)
     min_i = np.where(rmse_te == np.min(rmse_te))
         
     return rmse_te[min_i], degrees[min_i[1]]
@@ -179,7 +237,7 @@ select_best_model()
 
   #+RESULTS:
   :results:
-  # Out[265]:
+  # Out[16]:
   : (array([0.27485014]), array([4]))
   :end:
   
@@ -190,7 +248,7 @@ from template.least_squares import least_squares
 from template.split_data import split_data
 from template.plots import bias_variance_decomposition_visualization
 
-def bias_variance_demo():
+def generate_measures():
     """The entry."""
     # define parameters
     seeds = range(100)
@@ -203,23 +261,203 @@ def bias_variance_demo():
     rmse_te = np.empty((len(seeds), len(degrees)))
     
     for index_seed, seed in enumerate(seeds):
-        seed = np.random.seed(seed)
-        xx = np.linspace(0.1, 2 * np.pi, num_data)
-        x = np.hstack([np.ones((len(xx), 1)), xx[np.newaxis].T])
-        y = np.sin(xx) + 0.3 * np.random.randn(num_data).T
-        X_train, y_train, X_test, y_test = split_data(x, y, ratio_train, seed)
-        rmse_tr[index_seed], w = least_squares(y_train, X_train)
-        rmse_te[index_seed] = np.sqrt(1/X_test.shape[0] * np.dot(X_test.T, X_test))
+        for index_degree, degree in enumerate(degrees):
+            seed = np.random.seed(seed)
+            xx = np.linspace(0.1, 2 * np.pi, num_data)
+            x = build_poly(xx, degree)
+            y = np.sin(xx) + 0.3 * np.random.randn(num_data).T
+            X_train, y_train, X_test, y_test = split_data(x, y, ratio_train, seed)
+            trl, w = least_squares(y_train, X_train)
+            design = y_test[np.newaxis].T - np.dot(X_test, w[np.newaxis].T)
+            tel = np.sqrt(1/X_test.shape[0] * np.dot(design.T, design))
+            rmse_tr[index_seed, index_degree] = trl.ravel()[0]
+            rmse_te[index_seed, index_degree] = tel.ravel()[0]
 
+    return degrees, rmse_tr, rmse_te
+
+def bias_variance_demo(degrees, rmse_tr, rmse_te):
     bias_variance_decomposition_visualization(degrees, rmse_tr, rmse_te)
 
-bias_variance_demo()
+degrees, rmse_tr, rmse_te = generate_measures()
+bias_variance_demo(degrees, rmse_tr, rmse_te)
   #+END_SRC
 
   #+RESULTS:
   :results:
-  0 - 96ff3a3f-6fb0-47d8-b1f9-38eda7977758
+  # Out[20]:
+  [[file:./obipy-resources/Ypzw6M.png]]
   :end:
   
-    
+  1. *Look at the variance of test errors. Does it increase with the degree of polynomial?*
+
+     Yes, the variance obviously increases with higher degree of polynomial.
+
+  2. *What would you expect to happen if you replace least-squares with Ridge regression? Go through
+      the lecture notes to understand that.*
+
+      One could expect the variance on the test errors to reduce, since ridge regression enforces
+      coeffecients that are smaller in magnitude, and therefore better generalisability.
+
+   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+f, ax = plt.subplots()
+ax.boxplot(
+    x = rmse_te[:, :-1]
+)
+   #+END_SRC
+
+   #+RESULTS:
+   :results:
+   # Out[21]:
+   #+BEGIN_EXAMPLE
+     {'whiskers': [<matplotlib.lines.Line2D at 0x7fb23c8c60f0>,
+     <matplotlib.lines.Line2D at 0x7fb23c8c6d30>,
+     <matplotlib.lines.Line2D at 0x7fb23c8e0240>,
+     <matplotlib.lines.Line2D at 0x7fb23c7cb908>,
+     <matplotlib.lines.Line2D at 0x7fb277833f60>,
+     <matplotlib.lines.Line2D at 0x7fb23c75d0b8>,
+     <matplotlib.lines.Line2D at 0x7fb2777d6e10>,
+     <matplotlib.lines.Line2D at 0x7fb2777d6588>,
+     <matplotlib.lines.Line2D at 0x7fb23c8b3be0>,
+     <matplotlib.lines.Line2D at 0x7fb23c8b3898>,
+     <matplotlib.lines.Line2D at 0x7fb23c8af2b0>,
+     <matplotlib.lines.Line2D at 0x7fb23c8af048>,
+     <matplotlib.lines.Line2D at 0x7fb23c841080>,
+     <matplotlib.lines.Line2D at 0x7fb23c841358>,
+     <matplotlib.lines.Line2D at 0x7fb23c83a4a8>,
+     <matplotlib.lines.Line2D at 0x7fb23c83a780>],
+     'caps': [<matplotlib.lines.Line2D at 0x7fb2753ace80>,
+     <matplotlib.lines.Line2D at 0x7fb23c8e0630>,
+     <matplotlib.lines.Line2D at 0x7fb23c7cb2e8>,
+     <matplotlib.lines.Line2D at 0x7fb23c7cbe80>,
+     <matplotlib.lines.Line2D at 0x7fb23c75dc18>,
+     <matplotlib.lines.Line2D at 0x7fb23c75d7b8>,
+     <matplotlib.lines.Line2D at 0x7fb277841b00>,
+     <matplotlib.lines.Line2D at 0x7fb2778412e8>,
+     <matplotlib.lines.Line2D at 0x7fb23c8b3e10>,
+     <matplotlib.lines.Line2D at 0x7fb23c8b3a58>,
+     <matplotlib.lines.Line2D at 0x7fb23c8af0f0>,
+     <matplotlib.lines.Line2D at 0x7fb23c4a6588>,
+     <matplotlib.lines.Line2D at 0x7fb23c841630>,
+     <matplotlib.lines.Line2D at 0x7fb23c841908>,
+     <matplotlib.lines.Line2D at 0x7fb23c83aa58>,
+     <matplotlib.lines.Line2D at 0x7fb23c83ad30>],
+     'boxes': [<matplotlib.lines.Line2D at 0x7fb23c8c6240>,
+     <matplotlib.lines.Line2D at 0x7fb23c8e05c0>,
+     <matplotlib.lines.Line2D at 0x7fb277833dd8>,
+     <matplotlib.lines.Line2D at 0x7fb2777d66d8>,
+     <matplotlib.lines.Line2D at 0x7fb26cfb6b00>,
+     <matplotlib.lines.Line2D at 0x7fb23c8afcc0>,
+     <matplotlib.lines.Line2D at 0x7fb23c4a6c88>,
+     <matplotlib.lines.Line2D at 0x7fb23c83a0f0>],
+     'medians': [<matplotlib.lines.Line2D at 0x7fb23c8e0e80>,
+     <matplotlib.lines.Line2D at 0x7fb2778332e8>,
+     <matplotlib.lines.Line2D at 0x7fb23c75df28>,
+     <matplotlib.lines.Line2D at 0x7fb277841320>,
+     <matplotlib.lines.Line2D at 0x7fb23c8b34e0>,
+     <matplotlib.lines.Line2D at 0x7fb23c4a67b8>,
+     <matplotlib.lines.Line2D at 0x7fb23c841be0>,
+     <matplotlib.lines.Line2D at 0x7fb23a781048>],
+     'fliers': [<matplotlib.lines.Line2D at 0x7fb23c8e0c18>,
+     <matplotlib.lines.Line2D at 0x7fb2778331d0>,
+     <matplotlib.lines.Line2D at 0x7fb23c75d198>,
+     <matplotlib.lines.Line2D at 0x7fb26cfe3828>,
+     <matplotlib.lines.Line2D at 0x7fb23c8afe48>,
+     <matplotlib.lines.Line2D at 0x7fb23c4a6a90>,
+     <matplotlib.lines.Line2D at 0x7fb23c841eb8>,
+     <matplotlib.lines.Line2D at 0x7fb23a781320>],
+     'means': []}
+   #+END_EXAMPLE
+   [[file:./obipy-resources/zGq1w5.png]]
+   :end:
+
+   * Generating the bias-variance tradeoff plot with ridge regression
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+from template.least_squares import least_squares
+from template.split_data import split_data
+from template.plots import bias_variance_decomposition_visualization
+
+def cross_validation(y, x, k_indices, lambda_, degree):
+    """return the loss of ridge regression."""
+    train_losses = [0] * k_indices.shape[0]
+    test_losses = [0] * k_indices.shape[0]
+    for k in np.arange(k_indices.shape[0]):
+        # Augment and set indices
+        mask = np.arange(k_indices.shape[0]) == k
+        tri = k_indices[~mask].ravel()
+        tei = k_indices[mask].ravel()
+        # Subset for trainin and test sets
+        x_train = x[tri]
+        x_test = x[tei]
+        y_train = y[tri]
+        y_test = y[tei]
+        # Run ridge regression
+        train_losses[k], w = ridge_regression(y_train, x_train, lambda_)
+        test_losses[k] = compute_ridge_loss(y_test, x_test, w, lambda_)
+
+    return np.mean(train_losses), np.mean(test_losses)
+
+def select_best_model(y, X, seed, degree):
+    x_augmented = build_poly(X, degree)
+    # define paramters for ridge
+    k_fold = 4
+    lambdas = np.logspace(-4, 0, 30)
+    k_indices = build_k_indices(y, k_fold, seed)
+    # define lists to store the loss of training data and test data
+    cv_rmse_tr = [0] * len(lambdas)
+    cv_rmse_te = [0] * len(lambdas)
+    for i, lambda_ in enumerate(lambdas):
+        cv_rmse_tr[i], cv_rmse_te[i] = cross_validation(y, x_augmented, k_indices, lambda_, degree)
+        
+    return lambdas[np.argmax(cv_rmse_te)]
+  #+END_SRC
+
+  #+RESULTS:
+  :results:
+  # Out[22]:
+  :end:
   
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def generate_measures():
+    """The entry."""
+    # define parameters
+    seeds = range(100)
+    num_data = 10000
+    ratio_train = 0.05
+    degrees = range(1, 10)
+
+    # define list to store the variable
+    rmse_tr = np.empty((len(seeds), len(degrees)))
+    rmse_te = np.empty((len(seeds), len(degrees)))
+    
+    for index_seed, seed in enumerate(seeds):
+        for index_degree, degree in enumerate(degrees):
+            seed = np.random.seed(seed)
+            x = np.linspace(0.1, 2 * np.pi, num_data)
+            y = np.sin(x) + 0.3 * np.random.randn(num_data).T
+            X_train, y_train, X_test, y_test = split_data(x, y, ratio_train, seed)
+            ## Select best model paramter using cross-validation
+            best_lambda_ = select_best_model(y_train, X_train, seed, degree)
+            # Train using that param
+            X_train = build_poly(X_train, degree)
+            X_test = build_poly(X_test, degree)
+            trl, w = ridge_regression(y_train, X_train, best_lambda_)
+            tel = compute_ridge_loss(y_test, X_test, w, best_lambda_)
+            rmse_tr[index_seed, index_degree] = trl
+            rmse_te[index_seed, index_degree] = tel
+
+    return degrees, rmse_tr, rmse_te
+
+def bias_variance_demo(degrees, rmse_tr, rmse_te):
+    bias_variance_decomposition_visualization(degrees, rmse_tr, rmse_te)
+
+degrees, rmse_tr, rmse_te = generate_measures()
+bias_variance_demo(degrees, rmse_tr, rmse_te)
+  #+END_SRC
+
+  #+RESULTS:
+  :results:
+  0 - 92083a57-2949-4335-8493-9aa1f90ff477
+  :end:
+
