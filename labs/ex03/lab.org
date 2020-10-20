@@ -456,7 +456,6 @@ ridge_regression_demo(x, y, degree, split_ratio, seed)
   
     
   
-
 * Theory questions
 
   4. A ill-conditioned system is where a small change in the input matrix causes a large change 
