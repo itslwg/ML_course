@@ -5,7 +5,7 @@ import numpy as np
 
 def load_data(sub_sample=True, add_outlier=False):
     """Load data and convert it to the metric system."""
-    path_dataset = "height_weight_genders.csv"
+    path_dataset = "./template/height_weight_genders.csv"
     data = np.genfromtxt(
         path_dataset, delimiter=",", skip_header=1, usecols=[1, 2])
     height = data[:, 0]
@@ -45,9 +45,9 @@ def de_standardize(x, mean_x, std_x):
     return x
 
 
-def build_model_data(height, weight):
+def build_model_data(height, gender):
     """Form (y,tX) to get regression data in matrix form."""
-    y = weight
+    y = gender
     x = height
     num_samples = len(y)
     tx = np.c_[np.ones(num_samples), x]
