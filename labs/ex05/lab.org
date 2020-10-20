@@ -72,8 +72,8 @@ least_square_classification_demo(y, x)
   [[file:./obipy-resources/zRIeTK.png]]
   :end:
 
-* Logistic Regression
-** Logistic regression demo
+* 1. Logistic Regression
+** 1.1 Logistic regression demo
   
   #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
 def sigmoid(t):
@@ -168,7 +168,7 @@ logistic_regression_gradient_descent_demo(y, x)
   [[file:./obipy-resources/aHQqgx.png]]
   :end:
   
-** Newton's method for logistic regression
+** 1.2 Newton's method for logistic regression
 
    #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
 tx.T @ np.diag((sigmoid(tx @ w) * sigmoid(tx @ w))) @ tx
@@ -269,7 +269,7 @@ logistic_regression_newton_method_demo(y, x)
    [[file:./obipy-resources/cLWxtE.png]]
    :end:
    
-** Penalized Logistic Regression
+** 1.3 Penalized Logistic Regression
 
    #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
 tx = np.c_[np.ones((y.shape[0], 1)), x]
