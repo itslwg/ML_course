@@ -1,0 +1,223 @@
+* Activate the environment and import packages
+
+  #+BEGIN_SRC elisp :session
+(pyvenv-activate "~/courses/Machine Learning")
+  #+END_SRC
+
+  #+RESULTS:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+# Useful starting lines
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+import random
+from datetime import datetime
+
+import numpy as np
+import matplotlib.pyplot as plt
+  #+END_SRC
+
+  #+RESULTS:
+  :results:
+  # Out[1]:
+  :end:
+
+  #+BEGIN_SRC ipython :session :exports both :results output raw drawer :async t
+%load_ext autoreload
+%autoreload 2
+  #+END_SRC
+
+  #+RESULTS:
+  :results:
+  :end:
+  
+* 1. Support Vector Machines using SGD
+  
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+from sklearn import datasets
+
+#Load dataset
+sklearn_dataset = datasets.load_breast_cancer()
+Xx  = sklearn_dataset.data
+y = sklearn_dataset.target * 2 - 1    # labels must be in {-1, 1} for the hinge loss
+X = np.ones((Xx.shape[0], Xx.shape[1] + 1 ))    # add a column of ones for intercept
+X[:, :-1] = Xx
+f"(N, D) = {X.shape}"
+  #+END_SRC
+
+  #+RESULTS:
+  :results:
+  # Out[3]:
+  : '(N, D) = (569, 31)'
+  :end:
+  
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def calculate_primal_objective(y, X, w, lambda_):
+    """compute the full cost (the primal objective), that is loss plus regularizer.
+    X: the full dataset matrix, shape = (num_examples, num_features)
+    y: the corresponding +1 or -1 labels, shape = (num_examples)
+    w: shape = (num_features)
+    """
+    h = np.clip(1 - y * (X @ w), 0, np.inf)
+    l = np.sum(h) + (lambda_/2) * np.sum(w ** 2)
+
+    return l
+  #+END_SRC
+
+  #+RESULTS:
+  :results:
+  # Out[4]:
+  :end:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def calculate_accuracy(y, X, w):
+    """compute the training accuracy on the training set (can be called for test set as well).
+    X: the full dataset matrix, shape = (num_examples, num_features)
+    y: the corresponding +1 or -1 labels, shape = (num_examples)
+    w: shape = (num_features)
+    """
+    p = (X @ w > 0) * 2 - 1
+    c = y == p
+    acc = sum(c) / len(y)
+
+    return acc
+    
+  #+END_SRC  
+
+  #+RESULTS:
+  :results:
+  # Out[5]:
+  :end:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def calculate_stochastic_gradient(y, X, w, lambda_, n, num_examples):
+    """compute the stochastic gradient of loss plus regularizer.
+    X: the dataset matrix, shape = (num_examples, num_features)
+    y: the corresponding +1 or -1 labels, shape = (num_examples)
+    w: shape = (num_features)
+    n: the index of the (one) datapoint we have sampled
+    num_examples: N
+    """
+    # Be careful about the constant N (size) term!
+    # The complete objective for SVM is a sum, not an average as in earlier SGD examples!
+    x_n, y_n = X[n], y[n]
+    h = - y_n * x_n.T if y_n * x_n @ w < 1 else np.zeros_like(x_n.T)
+    grad = num_examples * np.squeeze(h) + lambda_ * w
+
+    return grad
+  #+END_SRC
+
+  #+RESULTS:
+  :results:
+  # Out[6]:
+  :end:
+  
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def sgd_for_svm_demo(y, X):
+    
+    max_iter = 2 * int(1e5)
+    gamma = 1e-4
+    lambda_ = int(1e4)   # big because scales with N due to the formulation of the problem (not an averaged loss)
+    
+    num_examples, num_features = X.shape
+    w = np.zeros(num_features)
+    
+    for it in range(max_iter):
+        # n = sample one data point uniformly at random data from x
+        n = random.randint(0,num_examples-1)
+        
+        grad = calculate_stochastic_gradient(y, X, w, lambda_, n, num_examples)
+        w -= gamma/(it+1) * grad
+        
+        if it % 10000 == 0:
+            cost = calculate_primal_objective(y, X, w, lambda_)
+            print("iteration={i}, cost={c}".format(i=it, c=cost))
+    
+    print("training accuracy = {l}".format(l=calculate_accuracy(y, X, w)))
+
+sgd_for_svm_demo(y, X)
+  #+END_SRC
+
+  #+RESULTS:
+  :results:
+  # Out[7]:
+  :end:
+  
+* 2. Support Vector Machines using Coordinate Descent
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def calculate_coordinate_update(y, X, lambda_, alpha, w, n):
+    """compute a coordinate update (closed form) for coordinate n.
+    X: the dataset matrix, shape = (num_examples, num_features)
+    y: the corresponding +1 or -1 labels, shape = (num_examples)
+    w: shape = (num_features)
+    n: the coordinate to be updated
+    """
+    x_n, y_n = X[n], y[n]
+    old_alpha_n = np.copy(alpha[n])
+    ## Calculate optimal gamma
+    g = 1 - y_n * x_n @ w
+    opt_gamma = (lambda_ / (x_n.T @ x_n)) * g
+    ## Set new alpha
+    new_alpha = old_alpha_n + opt_gamma
+    if g != 0:
+        alpha[n] = min(max(new_alpha, 0.0), 1.0)
+        w += (1 / lambda_) * (alpha[n] - old_alpha_n) * y_n * x_n
+    
+    return w, alpha
+  #+END_SRC
+
+  #+RESULTS:
+  :results:
+  # Out[18]:
+  :end:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def calculate_dual_objective(y, X, w, alpha, lambda_):
+    """calculate the objective for the dual problem."""
+    return np.sum(alpha)  - lambda_ / 2.0 * np.sum(w ** 2) # w = 1/lambda * X * Y * alpha
+  #+END_SRC
+
+  #+RESULTS:
+  :results:
+  # Out[20]:
+  :end:
+
+  #+BEGIN_SRC ipython :session :exports both :results raw drawer :async t
+def coordinate_descent_for_svm_demo(y, X):
+    max_iter = 2*int(1e5)
+    lambda_ = int(1e4)   # use same lambda as before in order to compare
+
+    num_examples, num_features = X.shape
+    w = np.zeros(num_features)
+    alpha = np.zeros(num_examples)
+    
+    for it in range(max_iter):
+        # n = sample one data point uniformly at random data from x
+        n = random.randint(0,num_examples-1)
+        
+        w, alpha = calculate_coordinate_update(y, X, lambda_, alpha, w, n)
+            
+        if it % 10000 == 0:
+            # primal objective
+            primal_value = calculate_primal_objective(y, X, w, lambda_)
+            # dual objective
+            dual_value = calculate_dual_objective(y, X, w, alpha, lambda_)
+            # primal dual gap
+            duality_gap = primal_value - dual_value
+            print('iteration=%i, primal:%.5f, dual:%.5f, gap:%.5f'%(
+                    it, primal_value, dual_value, duality_gap))
+    print("training accuracy = {l}".format(l=calculate_accuracy(y, X, w)))
+
+coordinate_descent_for_svm_demo(y, X)
+  #+END_SRC
+
+  #+RESULTS:
+  :results:
+  # Out[21]:
+  :end:
+  
+** Theory questions - Kernels
+
+   1.
